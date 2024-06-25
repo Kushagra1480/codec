@@ -29,13 +29,14 @@ export class UserManager {
         const user = this.users.find(x => x.socket.id === socketId)
         this.users = this.users.filter((user) => user.socket.id !== socketId)
         this.queue = this.queue.filter(id => id === socketId)
-        
     }
 
     clearQueue() { 
         if (this.queue.length < 2) {
             return;
         }
+        const id1 = this.queue.pop()
+        const id2 = this.queue.pop()
         const user1 = this.users.find(user => user.socket.id === this.queue.pop())
         const user2 = this.users.find(user => user.socket.id === this.queue.pop())
         if (!user1 || !user2) {
