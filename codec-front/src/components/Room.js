@@ -35,7 +35,8 @@ export const Room = ({
                 if (e.candidate) {
                     socket.emit("add-ice-candidate", {
                         candidate: e.candidate,
-                        type: "sender" 
+                        type: "sender",
+                        roomId
                 })
                     pc.addIceCandidate(e.candidate)
                 }
@@ -66,23 +67,30 @@ export const Room = ({
                     socket.emit("add-ice-candidate", {
                         candidate: e.candidate, 
                         type: "receiver",
+                        roomId
                 })
                     pc.addIceCandidate(e.candidate)
                 }
             }
-            pc.ontrack = ({track, type}) => {
-                if (type === "audio") {
-                    setRemoteAudioTrack(track)
-                    remoteVideoRef.current.srcObject = new MediaStream([track])
-                } else {
-                    setRemoteVideoTrack(track)
-                    remoteVideoRef.current.srcObject = new MediaStream([track])
-                }
-                remoteVideoRef.current.play()
+            pc.ontrack = (e) => {
             }
             socket.emit("answer", {
                 roomId, 
                 sdp: sdp
+            })
+            setTimeout(() => {
+                const track1 = pc.getTransceivers()[0].receiver.track
+                const track2 = pc.getTransceivers()[1].receiver.track
+                if(track1.kind === "video") {
+                    setRemoteVideoTrack(track1)
+                    setRemoteAudioTrack(track2)
+                } else {
+                    setRemoteVideoTrack(track2)
+                    setRemoteAudioTrack(track1)
+                }
+                remoteVideoRef.current.srcObject.addTrack(track1)
+                remoteVideoRef.current.srcObject.addTrack(track2)
+                remoteVideoRef.current.play()
             })
         })
         socket.on("answer", ({roomId, sdp: remoteSdp}) => {
@@ -102,7 +110,7 @@ export const Room = ({
                     return pc
                 })
             } else {
-                setReceivingPc(pc => {
+                setSendingPc(pc => {
                     pc?.addIceCandidate(candidate)
                     return pc
                 })
