@@ -37,7 +37,7 @@ export const Landing = () => {
         onChange={(e) => setName(e.target.value)}
         placeholder="Enter your name">
         </input>
-        <Link to={`/room?name=${name}`}>Join</Link>
+        <button onClick={() => setJoined(true)}>Join</button>
     </div>
     )
     } else {
