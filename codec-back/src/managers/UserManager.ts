@@ -3,7 +3,7 @@ import { RoomManager } from "./RoomManager";
 
 export interface User {
     socket: Socket;
-    name : string;
+    name: string;
 }
 
 export class UserManager {
@@ -15,19 +15,19 @@ export class UserManager {
         this.queue = []
         this.roomManager = new RoomManager()
     }
-    addUser(socket: Socket, name: string) {
+    addUser(name: string, socket: Socket) {
         this.users.push({
             name, socket
         })
         this.queue.push(socket.id)
-        socket.send("lobby")
+        socket.emit("lobby")
         this.clearQueue()
         this.initHandlers(socket)
     }
     
     removeUser(socketId: string) {
         const user = this.users.find(x => x.socket.id === socketId)
-        this.users = this.users.filter((user) => user.socket.id !== socketId)
+        this.users = this.users.filter(x => x.socket.id !== socketId)
         this.queue = this.queue.filter(id => id === socketId)
     }
 
@@ -37,8 +37,8 @@ export class UserManager {
         }
         const id1 = this.queue.pop()
         const id2 = this.queue.pop()
-        const user1 = this.users.find(user => user.socket.id === this.queue.pop())
-        const user2 = this.users.find(user => user.socket.id === this.queue.pop())
+        const user1 = this.users.find(user => user.socket.id === id1)
+        const user2 = this.users.find(user => user.socket.id === id2)
         if (!user1 || !user2) {
             return;
         }
@@ -53,7 +53,7 @@ export class UserManager {
             this.roomManager.onAnswer(roomId, sdp, socket.id)
         })
         socket.on("add-ice-candidate", ({candidate, roomId, type}) => {
-            this.roomManager.onIceCandidate(roomId, socket.id, candidate, type)  
+            this.roomManager.onIceCandidates(roomId, socket.id, candidate, type)  
         })
     }
 

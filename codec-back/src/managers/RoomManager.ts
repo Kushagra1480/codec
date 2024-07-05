@@ -21,7 +21,7 @@ export class RoomManager {
         })
     }
 
-    onOffer(roomId: string, sdp: string,senderSocketId : string) {
+    onOffer(roomId: string, sdp: string, senderSocketId : string) {
         const room = this.rooms.get(roomId)
         if (!room) {
             return
@@ -44,7 +44,7 @@ export class RoomManager {
             roomId
         })
     }
-    onIceCandidate(roomId: string, senderSocketId: string, candidate: any, type: "sender" | "receiver") {
+    onIceCandidates(roomId: string, senderSocketId: string, candidate: any, type: "sender" | "receiver") {
         const room = this.rooms.get(roomId)
         if (!room) {
             return

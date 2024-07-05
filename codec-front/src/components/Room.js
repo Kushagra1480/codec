@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from "react"
-import { useSearchParams } from "react-router-dom"
-import {Socket, io} from "socket.io-client"
+import { io } from "socket.io-client"
 
 const URL = "http://localhost:3000"
 export const Room = ({
@@ -8,7 +7,6 @@ export const Room = ({
     localVideoTrack,
     localAudioTrack,
 }) => {
-    const [searchParams, setSearchParams] = useSearchParams()
     const [lobby, setLobby] = useState(true)
     const [socket, setSocket] = useState(null)
     const [sendingPc, setSendingPc] = useState(null)
@@ -27,9 +25,13 @@ export const Room = ({
             const pc = new RTCPeerConnection()
             setSendingPc(pc)
             if (localAudioTrack) {
+                console.log("added track")
+                console.log(localAudioTrack)
                 pc.addTrack(localAudioTrack)
             }
             if (localVideoTrack) {
+                console.log("added track")
+                console.log(localAudioTrack)
                 pc.addTrack(localVideoTrack)
             }
             pc.onicecandidate = async (e) => {
@@ -54,9 +56,6 @@ export const Room = ({
             console.log("offer")
             setLobby(false)
             const pc = new RTCPeerConnection()
-            pc.setRemoteDescription(remoteSdp)
-            const sdp = await pc.createAnswer()
-            pc.setLocalDescription(sdp)
             const stream = new MediaStream()
             if(remoteVideoRef.current) {
                 remoteVideoRef.current.srcObject = stream
@@ -64,6 +63,27 @@ export const Room = ({
             setRemoteMediaStream(stream)
             setReceivingPc(pc)
             window.pcr = pc
+            pc.ontrack = (e) => {
+                const {track, type} = e
+                if (type === "audio") {
+                    setRemoteAudioTrack(track)
+                    remoteVideoRef.current.srcObject.addTrack(track)
+                } else {
+                    setRemoteVideoTrack(track)
+                    remoteVideoRef.current.srcObject.addTrack(track)
+                }
+                let remotePlayPromise = remoteVideoRef.current.play()
+                if (remotePlayPromise !== undefined) {
+                    remotePlayPromise.then(_ => {
+                      // Automatic playback started!
+                      // Show playing UI.
+                    })
+                    .catch(error => {
+                      // Auto-play was prevented
+                      // Show paused UI.
+                    });
+                  }
+            }
             pc.onicecandidate = async (e) => {
                     if (!e.candidate) {
                         return
@@ -76,36 +96,14 @@ export const Room = ({
                     })
                 }   
             }
-            pc.ontrack = (e) => {
-            }
+            await pc.setRemoteDescription(remoteSdp)
+            const sdp = await pc.createAnswer()
+            await pc.setLocalDescription(sdp)
+            setReceivingPc(pc)
             socket.emit("answer", {
                 roomId, 
                 sdp: sdp
             })
-            setTimeout(() => {
-                const track1 = pc.getTransceivers()[0].receiver.track
-                const track2 = pc.getTransceivers()[1].receiver.track
-                if(track1.kind === "video") {
-                    setRemoteVideoTrack(track1)
-                    setRemoteAudioTrack(track2)
-                } else {
-                    setRemoteVideoTrack(track2)
-                    setRemoteAudioTrack(track1)
-                }
-                remoteVideoRef.current.srcObject.addTrack(track1)
-                remoteVideoRef.current.srcObject.addTrack(track2)
-                let remotePlayPromise = remoteVideoRef.current.play()
-                if (remotePlayPromise !== undefined) {
-                    remotePlayPromise.then(_ => {
-                      // Automatic playback started!
-                      // Show playing UI.
-                    })
-                    .catch(error => {
-                      // Auto-play was prevented
-                      // Show paused UI.
-                    });
-                  }
-            }, 5000)
         })
         socket.on("answer", ({roomId, sdp: remoteSdp}) => {
             console.log("answer")
@@ -120,10 +118,12 @@ export const Room = ({
         })
         socket.on("add-ice-candidate", ({candidate, type}) => {
             console.log("add-ice-candidate")
-            if (type === "sender") {
+            if (type == "sender") {
                 setReceivingPc(pc => {
                     if (!pc) {
                         console.error("receiving pc not found")
+                    } else {
+                        console.log(pc.ontrack)
                     }
                     pc?.addIceCandidate(candidate)
                     return pc

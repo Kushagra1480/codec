@@ -2,10 +2,9 @@ import { Socket } from "socket.io"
 import http from "http"
 import express from "express"
 import {Server} from "socket.io"
-import { UserManager } from "./managers/UserManager";
+import { UserManager } from "./managers/UserManager"
 
-const app = express();
-const server = http.createServer(app);
+const server = http.createServer(http);
 const io = new Server(server, {
     cors: {
         origin: "*"
@@ -15,9 +14,10 @@ const io = new Server(server, {
 const userManager = new UserManager();
 
 io.on("connection", (socket: Socket) => {
-    console.log("a user connected");
-    userManager.addUser(socket, "randomUser")
+    console.log("a user connected")
+    userManager.addUser("randomUser", socket)   
     socket.on("disconnect", ()=>{
+        console.log("user disconnected")
         userManager.removeUser(socket.id)
     })
 });
