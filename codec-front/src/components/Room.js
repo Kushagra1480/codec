@@ -18,13 +18,14 @@ export const Room = ({
     const [remoteMediaStream, setRemoteMediaStream] = useState(null)
     const remoteVideoRef = useRef()
     const localVideoRef = useRef()
+
     useEffect(() => {
         const socket = io(URL)
         socket.on('send-offer', async ({roomId}) => {
+            console.log("send-offer")
             setLobby(false)
             const pc = new RTCPeerConnection()
             setSendingPc(pc)
-            pc.addTrack(localVideoTrack)
             if (localAudioTrack) {
                 pc.addTrack(localAudioTrack)
             }
@@ -32,13 +33,12 @@ export const Room = ({
                 pc.addTrack(localVideoTrack)
             }
             pc.onicecandidate = async (e) => {
-                if (e.candidate) {
-                    socket.emit("add-ice-candidate", {
-                        candidate: e.candidate,
-                        type: "sender",
-                        roomId
-                })
-                    pc.addIceCandidate(e.candidate)
+                    if (e.candidate) {
+                        socket.emit("add-ice-candidate", {
+                            candidate: e.candidate,
+                            type: "sender",
+                            roomId
+                    })
                 }
             }
             pc.onnegotiationneeded = async () => {
@@ -51,6 +51,7 @@ export const Room = ({
             }
         })
         socket.on("offer", async ({roomId, sdp: remoteSdp}) => {
+            console.log("offer")
             setLobby(false)
             const pc = new RTCPeerConnection()
             pc.setRemoteDescription(remoteSdp)
@@ -62,15 +63,18 @@ export const Room = ({
             }
             setRemoteMediaStream(stream)
             setReceivingPc(pc)
+            window.pcr = pc
             pc.onicecandidate = async (e) => {
-                if (e.candidate) {
-                    socket.emit("add-ice-candidate", {
-                        candidate: e.candidate, 
-                        type: "receiver",
-                        roomId
-                })
-                    pc.addIceCandidate(e.candidate)
-                }
+                    if (!e.candidate) {
+                        return
+                    }
+                    if (e.candidate) {
+                        socket.emit("add-ice-candidate", {
+                            candidate: e.candidate, 
+                            type: "receiver",
+                            roomId
+                    })
+                }   
             }
             pc.ontrack = (e) => {
             }
@@ -90,10 +94,21 @@ export const Room = ({
                 }
                 remoteVideoRef.current.srcObject.addTrack(track1)
                 remoteVideoRef.current.srcObject.addTrack(track2)
-                remoteVideoRef.current.play()
-            })
+                let remotePlayPromise = remoteVideoRef.current.play()
+                if (remotePlayPromise !== undefined) {
+                    remotePlayPromise.then(_ => {
+                      // Automatic playback started!
+                      // Show playing UI.
+                    })
+                    .catch(error => {
+                      // Auto-play was prevented
+                      // Show paused UI.
+                    });
+                  }
+            }, 5000)
         })
         socket.on("answer", ({roomId, sdp: remoteSdp}) => {
+            console.log("answer")
             setLobby(false)
             setSendingPc(pc => {
                 pc?.setRemoteDescription(remoteSdp)
@@ -104,13 +119,20 @@ export const Room = ({
             setLobby(true)
         })
         socket.on("add-ice-candidate", ({candidate, type}) => {
+            console.log("add-ice-candidate")
             if (type === "sender") {
                 setReceivingPc(pc => {
+                    if (!pc) {
+                        console.error("receiving pc not found")
+                    }
                     pc?.addIceCandidate(candidate)
                     return pc
                 })
             } else {
                 setSendingPc(pc => {
+                    if (!pc) {
+                        console.error("sending pc not found")
+                    }
                     pc?.addIceCandidate(candidate)
                     return pc
                 })
@@ -123,7 +145,17 @@ export const Room = ({
         if (localVideoRef.current) {
             if(localVideoTrack) {
                 localVideoRef.current.srcObject = new MediaStream([localVideoTrack])
-                localVideoRef.current.play()
+                let localPlayPromise = localVideoRef.current.play()
+                if (localPlayPromise !== undefined) {
+                    localPlayPromise.then(_ => {
+                      // Automatic playback started!
+                      // Show playing UI.
+                    })
+                    .catch(error => {
+                      // Auto-play was prevented
+                      // Show paused UI.
+                    });
+                  }
             }
         }
     }, [localVideoRef])
